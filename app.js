@@ -6,6 +6,7 @@ import { geocodePack } from './src/geocode.js';
 import { nearestPlaces, placesWithin, radiusMeters, defaultUnit, formatDistance } from './src/geo.js';
 import { limitToNearby } from './src/nearby.js';
 import { SORTS, DEFAULT_SORT, sortPeople } from './src/sort.js';
+import { offlineReport, mark } from './src/offline.js';
 import { geocodeName } from './src/geocode.js';
 import { narrate, templateNarration, engineOf, ungroundedWord, DEFAULT_SETTINGS } from './src/narrate.js';
 import { BROWSER_MODELS, webGpuAvailable, isDownloaded, loadModel, isLoaded, generatorFor, removeModel, friendlyLoadError } from './src/webllm.js';
@@ -304,15 +305,31 @@ $('tour').addEventListener('change', (e) => {
 
 const currentPlace = (pack) => pack.places.find((p) => p.key === state.placeKey);
 
+// Loading Gemma takes a lot of memory, and a phone with many tabs open may close the page to make room. The page then
+// comes back as if it had been reloaded, with no word about why. A note is left in localStorage while a load is under
+// way; finding it at the next start means the load never finished.
+const LOADING_KEY = 'branches-loading';
+const flag = (on) => { try { if (on) localStorage.setItem(LOADING_KEY, String(Date.now())); else localStorage.removeItem(LOADING_KEY); } catch { /* ignore */ } };
+try { state.loadCrashed = !!localStorage.getItem(LOADING_KEY); localStorage.removeItem(LOADING_KEY); } catch { state.loadCrashed = false; }
+async function guardedLoad(id, opts) {
+  flag(true);
+  try { return await loadModel(id, opts); } finally { flag(false); }
+}
+
 // The in-browser Gemma, loaded from the device if it was downloaded. null for the other engines.
 async function browserGenerator() {
   state.browserReason = '';
   if (state.settings.engine !== 'browser') return null;
+  if (state.loadCrashed) {
+    state.loadCrashed = false;
+    state.browserReason = 'the page closed the last time Gemma was loading, usually because the phone ran out of memory. Close other tabs and apps, then press "tell it again" to try Gemma once more';
+    return null;
+  }
   if (!webGpuAvailable()) { state.browserReason = 'this browser has no WebGPU, so Gemma cannot run in it'; return null; }
   const id = state.settings.browserModel || BROWSER_MODELS[0].id;
   try {
     if (!isLoaded(id) && !(await isDownloaded(id))) { state.browserReason = 'Gemma is not downloaded on this device (the phone may have cleared it: open Narrator and download it again)'; return null; }
-    return generatorFor(await loadModel(id));
+    return generatorFor(await guardedLoad(id));
   } catch (err) { state.browserReason = friendlyLoadError(err); return null; } // say what really went wrong, not just "not downloaded"
 }
 
@@ -506,7 +523,7 @@ function bindSettings() {
     $('dlModel').disabled = true; $('dlBar').hidden = false; $('dlBar').value = 0;
     const kept = await (navigator.storage && navigator.storage.persist ? navigator.storage.persist().catch(() => false) : false);
     try {
-      const engine = await loadModel(id, { onProgress: (p) => { $('dlBar').value = Math.round((p.progress || 0) * 100); $('dlMsg').textContent = p.text || ''; } });
+      const engine = await guardedLoad(id, { onProgress: (p) => { $('dlBar').value = Math.round((p.progress || 0) * 100); $('dlMsg').textContent = p.text || ''; } });
       $('dlMsg').textContent = 'Checking that Gemma answers…';
       const hello = await generatorFor(engine)('In one short sentence, welcome a visitor to a quiet cemetery.');
       $('dlMsg').textContent = `Ready. Gemma says: ${hello.trim()}` + (kept ? '' : '\nYour browser did not promise to keep this download. If the phone runs low on space it may clear it, so check before you leave home.');
@@ -535,6 +552,19 @@ async function refreshBrowserModel(keepMessage = false) {
   $('rmModel').hidden = !have;
   if (!keepMessage) $('dlMsg').textContent = have ? 'Downloaded on this device.' : '';
 }
+
+// ---------- offline check ----------
+$('offlineCheck').addEventListener('click', async () => {
+  const id = state.settings.browserModel || BROWSER_MODELS[0].id;
+  let downloaded = false;
+  try { downloaded = state.settings.engine === 'browser' && await isDownloaded(id); } catch { downloaded = false; }
+  const rows = await offlineReport({
+    nav: navigator, cacheStorage: 'caches' in window ? caches : null,
+    standalone: !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)),
+    packs: state.packs, gemma: { needed: state.settings.engine === 'browser', downloaded }, version: VERSION,
+  });
+  $('offlineOut').innerHTML = rows.map((r) => `<li class="${r.ok === true ? 'yes' : r.ok === false ? 'no' : ''}"><b>${mark(r.ok)}</b> ${esc(r.text)}</li>`).join('');
+});
 
 // ---------- boot ----------
 bindSettings();

@@ -71,3 +71,12 @@ test('sound is unlocked inside the tap, and every clip plays through the one unl
   assert.match(app, /player\.src = state\.audioUrl/);
   assert.ok(!/<audio id="player"/.test(app), 'a fresh <audio> element per story is never unlocked on an iPhone');
 });
+
+test('the offline check and the Gemma crash note are wired up', () => {
+  assert.match(app, /\$\('offlineCheck'\)\.addEventListener\('click'/);
+  assert.ok(html.includes('id="offlineOut"'));
+  assert.match(app, /offlineReport\(/);
+  assert.match(app, /guardedLoad\(/);
+  assert.ok(!/await loadModel\(/.test(app.replace(/async function guardedLoad[\s\S]*?\n}\n/, '')), 'every Gemma load goes through the crash note');
+  assert.match(read('sw.js'), /src\/offline\.js/);
+});

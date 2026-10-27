@@ -84,3 +84,4 @@ button.copy{padding:2px 8px;font-size:.75rem;margin-left:6px}
 
 .radius{margin:10px 0 0;color:var(--mut);font-size:.9rem}.radius input{width:6.5em}.radius input,.radius select{font:inherit;padding:6px 8px}
 .near{margin:12px 0;color:var(--mut)}.near input[type=number]{width:5.5em}.near input,.near select{font:inherit;padding:6px 8px}.near input[type=text],.near #nearPlace{margin-top:6px;width:100%;box-sizing:border-box}
+.checks{list-style:none;padding:0;margin:10px 0}.checks li{padding:6px 0 6px 1.6em;text-indent:-1.6em;color:var(--mut)}.checks li b{display:inline-block;width:1.6em;text-indent:0;color:var(--gold)}.checks li.no b{color:#ff9a8a}.checks li.yes b{color:#8fd694}
