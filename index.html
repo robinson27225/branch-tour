@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#25422d">
+<title>Tour of the Branches</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+<div class="top"><h1>Tour of the Branches</h1><p class="tag">Walk among your ancestors. The narrator runs on your own device.</p></div>
+<nav>
+  <button data-view="tour" class="on">Tour</button>
+  <button data-view="packs">Packs</button>
+  <button data-view="settings">Narrator</button>
+</nav>
+<main>
+  <section id="tour"></section>
+  <section id="packs" hidden>
+    <div id="progress" class="progress" role="status" aria-live="polite" hidden>
+      <div id="statusText"></div>
+      <progress id="bar" max="100" value="0" hidden></progress>
+      <button id="startTour" class="start" type="button" hidden>Start the tour →</button>
+    </div>
+    <h2>Build a tour pack</h2>
+    <form id="buildForm" class="panel">
+      <h2>From WikiTree, in this browser</h2>
+      <p class="hint">Uses your WikiTree login. Public profiles only; living people are left out.</p>
+      <label>Your WikiTree ID <input id="startId" placeholder="e.g. Robinson-27225" autocomplete="off"></label>
+      <div class="modes">
+        <label><input type="radio" name="mode" value="ancestors" checked> My ancestors, with biographies</label>
+        <label id="gensRow">Generations <select id="gens"><option>3</option><option>4</option><option>5</option><option selected>6</option><option>7</option><option>8</option><option>10</option></select></label>
+        <label><input type="radio" name="mode" value="cc7"> My CC7: relatives within seven degrees</label>
+        <label><input type="radio" name="mode" value="category"> One cemetery or category</label>
+        <label id="degRow" hidden>Go out to <select id="degrees">
+          <option value="7" selected>7 degrees: a full CC7, as far as WikiTree allows</option>
+          <option value="6">6 degrees</option><option value="5">5 degrees</option><option value="4">4 degrees</option>
+          <option value="3">3 degrees</option><option value="2">2 degrees: grandparents, aunts, uncles, cousins, in-laws</option>
+          <option value="1">1 degree: parents, children, siblings, spouses</option></select>
+          <span class="hint">Goes out one degree at a time, closest first, and reads WikiTree in pages, so a large family is fine. Each degree is about three times bigger than the last: seven degrees can be 4,000 people and take half a minute.</span></label>
+        <label id="catRow" hidden>Category name or address <input id="category" placeholder="Fern Hill Cemetery, Aberdeen, Washington"></label>
+      </div>
+      <div class="near">
+        <label><input id="nearOn" type="checkbox"> Only people near a place</label>
+        <span id="nearRow" hidden>within <input id="nearN" type="number" min="1" step="any" inputmode="decimal" value="25" aria-label="Distance">
+          <select id="nearUnit" aria-label="Distance unit"><option value="mi">miles</option><option value="km">km</option></select> of
+          <select id="nearWhere" aria-label="Centre"><option value="gps">my current location</option><option value="place">a place I type</option></select>
+          <input id="nearPlace" placeholder="e.g. Molalla, Oregon" hidden aria-label="Place">
+          <span class="hint">Needs internet. It checks which states or countries are in reach, then looks up only the places in those, about one a second. People whose place cannot be found are left out.</span></span>
+      </div>
+      <label><input id="doGeocode" type="checkbox" checked> Look up cemetery locations on a map (needs internet; about a minute for 60 places)</label>
+      <button class="go" id="buildBtn" type="submit">Build my tour pack</button>
+    </form>
+    <details id="importer" class="panel">
+      <summary>Or import files you already have</summary>
+    <p>On WikiTree Plus, run your search (for example your CC7) and download it as <b>Excel</b> or <b>Separated values</b>. Plus only lists public profiles, which is what a tour can use; private ones are skipped. Drop the file here. You can also drop the <b>JSON export</b> from the Genealogy Report app, which adds biographies and burial places. Living people are left out.</p>
+    <label class="drop">Choose or drop files (.xlsx, .csv, .tsv, .json, .html)
+      <input id="file" type="file" accept=".xlsx,.csv,.tsv,.txt,.json,.html,.htm" multiple></label>
+    <p class="hint">To see how each person is related to <i>you</i> in one cemetery: open the cemetery category on WikiTree, press <b>My Connections</b>, and save that page (File, Save Page As) as .html. Press <b>Next</b> and save again for more. Drop all the pages together, and add your report JSON too if you like. A Plus search saved as <b>JSON</b> only lists profile IDs. Drop it first and it filters the table you drop next.</p>
+    <label>Pack name for imported files <input id="packName" value="My ancestors"></label>
+    </details>
+    <h2>Packs on this device</h2>
+    <ul id="packList" class="list"></ul>
+    <button id="demo" class="quiet">Load the sample pack (fictional people)</button>
+  </section>
+  <section id="settings" hidden>
+    <h2>Narrator</h2>
+    <label>Who writes each story
+      <select id="engine">
+        <option value="template">Plain template (no model)</option>
+        <option value="browser">Gemma in this browser</option>
+        <option value="ollama">Gemma with Ollama</option>
+      </select></label>
+    <p class="hint">Either way the model only sees the facts from the pack, and a story that adds a year that is not in the record is thrown away for the plain template.</p>
+
+    <div id="browserRow" class="panel" hidden>
+      <h2>Gemma in this browser</h2>
+      <label>Model <select id="browserModel"></select></label>
+      <p id="gpuNote" class="hint"></p>
+      <button type="button" id="dlModel" class="go">Download Gemma to this device</button>
+      <button type="button" id="rmModel" class="quiet" hidden>Remove it</button>
+      <progress id="dlBar" max="100" value="0" hidden></progress>
+      <p id="dlMsg" class="hint" role="status"></p>
+      <p class="hint">About 1 to 2 GB, downloaded once from Hugging Face and kept by the browser. After that it writes stories with no signal and nothing leaves this device. Needs a browser with WebGPU, such as recent Chrome or Edge.</p>
+    </div>
+
+    <div id="ollamaRow" class="panel" hidden>
+      <h2>Gemma with Ollama</h2>
+      <ol class="steps">
+        <li>Install Ollama from <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a>.</li>
+        <li>Get Gemma: <code id="cmdPull"></code> <button type="button" class="copy" data-copy="cmdPull">Copy</button></li>
+        <li>Start Ollama so this page may talk to it: <code id="cmdServe"></code> <button type="button" class="copy" data-copy="cmdServe">Copy</button><br><span class="hint">If Ollama is already running, quit it first. On Windows, set the OLLAMA_ORIGINS environment variable to this address and restart Ollama.</span></li>
+      </ol>
+      <label>Ollama address <input id="ollamaUrl"></label>
+      <label>Model <input id="model"></label>
+      <button type="button" id="checkOllama">Check the connection</button>
+      <p id="ollamaMsg" class="hint" role="status"></p>
+      <p class="hint">The Ollama address has to be on the same computer as this browser. A phone cannot reach a laptop's Ollama from an https page, so on a phone choose Gemma in this browser. Safari blocks the connection to Ollama, so use Chrome, Edge or Firefox.</p>
+    </div>
+
+    <h2>Voice</h2>
+    <label>Read each story aloud with
+      <select id="voice">
+        <option value="off">Nothing (text only)</option>
+        <option value="browser">This device's voice</option>
+        <option value="eleven">ElevenLabs</option>
+      </select></label>
+    <div id="elevenRow" class="panel" hidden>
+      <h2>ElevenLabs</h2>
+      <label>API key <input id="elevenKey" type="password" autocomplete="off" placeholder="paste your ElevenLabs API key"></label>
+      <label>Voice ID <input id="voiceId" list="voiceList"></label><datalist id="voiceList"></datalist>
+      <label>Model <input id="voiceModel"></label>
+      <button type="button" id="testVoice">Test the voice</button>
+      <p id="voiceMsg" class="hint" role="status"></p>
+      <p class="hint">Your key stays in this browser and is sent only to ElevenLabs. Make a key limited to Text to Speech with a credit cap on your ElevenLabs account. Only the story text is sent to be spoken, and each clip is saved on this device so it plays again with no signal. Find Voice IDs on your ElevenLabs Voices page.</p>
+    </div>
+  </section>
+</main>
+</div>
+<div class="colophon">
+  <div class="in">
+    <a class="brand" href="https://www.wikitree.com/" title="WikiTree: Where genealogists collaborate"><span role="img" aria-label="WikiTree: Where genealogists collaborate"></span></a>
+    <div class="meta"><span id="ver"></span><br><a id="owner" href="#"></a></div>
+  </div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

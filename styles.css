@@ -1,0 +1,86 @@
+@font-face{font-family:"Roboto Mono";font-weight:400;font-style:normal;font-display:swap;src:url(fonts/roboto-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Roboto Mono";font-weight:700;font-style:normal;font-display:swap;src:url(fonts/roboto-mono-latin-700-normal.woff2) format("woff2")}
+:root{
+  --bg:#25422d;      /* WikiTree dark green */
+  --card:#1c3323;
+  --line:#3f6a4b;
+  --fg:#e5eecf;
+  --mut:#b4c79a;
+  --gold:#fcb815;
+  --gold-ink:#25422d;
+  --lime:#8fc641;
+  --band:#e5eecf;
+}
+*{box-sizing:border-box}
+/* Our own display rules (label, .panel...) would otherwise win over the browser's rule for the hidden attribute. */
+[hidden]{display:none !important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 "Roboto Mono",ui-monospace,Menlo,Consolas,monospace;min-height:100vh;display:flex;flex-direction:column}
+.wrap{width:100%;max-width:680px;margin-inline:auto;padding:0 16px 40px;flex:1}
+.top{padding:22px 0 4px}
+h1{margin:0;font-size:clamp(1.15rem,5.6vw,1.7rem);letter-spacing:.06em;font-weight:700;color:var(--gold)}
+h2{font-size:1.1rem;margin:22px 0 8px;color:var(--gold)}
+h3{font-size:1rem;margin:20px 0 6px;color:var(--lime)}
+.tag{color:var(--mut);margin:4px 0 0;font-size:.9rem}
+a{color:var(--gold)}
+nav{display:flex;gap:8px;margin:14px 0}nav button{flex:1}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer}
+button:hover{border-color:var(--gold)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.on,button.go{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:700}
+button.quiet{background:none;margin-top:12px}
+label{display:block;margin:10px 0}
+input[type=text],input:not([type]),input[type=file],select{width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px;margin-top:4px}
+input[type=checkbox],input[type=radio]{accent-color:var(--gold);margin-right:6px}
+.drop{border:1px dashed var(--gold);border-radius:10px;padding:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px 16px 16px;margin:12px 0}
+.panel h2{margin-top:14px}
+.modes label{margin:6px 0}
+.list{list-style:none;padding:0}
+.list li{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:8px 0;padding:12px;display:flex;justify-content:space-between;gap:8px;align-items:center;cursor:pointer}
+.list li:hover{border-color:var(--gold)}
+.list small{color:var(--mut);display:block}
+.hint,#status{color:var(--mut);font-size:.85rem}
+.story{background:var(--card);border-left:3px solid var(--gold);padding:12px 16px;border-radius:8px;margin:12px 0;white-space:pre-wrap}
+.src{color:var(--mut);font-size:.8rem}
+code{background:var(--card);padding:1px 4px;border-radius:4px}
+.colophon{background:var(--band);color:var(--bg)}
+.colophon .in{max-width:680px;margin-inline:auto;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.colophon .brand{display:block;flex-shrink:1;min-width:0}
+.colophon .brand span{display:block;height:32px;aspect-ratio:534/85;max-width:60vw;background:url(img/wt-brand.png) no-repeat left center/contain}
+.colophon .meta{font-size:.75rem;line-height:1.35;text-align:right;white-space:nowrap}
+.colophon a{color:var(--bg);font-weight:700}
+
+/* progress banner: stays in view while a long build runs */
+.progress #statusText{white-space:pre-line}
+.progress{position:sticky;top:0;z-index:10;background:var(--gold);color:var(--gold-ink);border-radius:0 0 10px 10px;padding:12px 16px;margin:0 -16px 8px;box-shadow:0 4px 14px rgba(0,0,0,.35);font-weight:700}
+.progress progress{width:100%;height:10px;margin-top:8px;accent-color:var(--gold-ink)}
+.progress .start{margin-top:10px;background:var(--gold-ink);color:var(--gold);border-color:var(--gold-ink);width:100%;font-size:1rem}
+.progress.error{background:#e8b4a0}
+details.panel{padding:0 16px}
+details.panel>summary{cursor:pointer;color:var(--lime);font-weight:700;padding:14px 0;list-style:none}
+details.panel>summary::before{content:"▸ ";}
+details.panel[open]>summary::before{content:"▾ ";}
+details.panel[open]{padding-bottom:16px}
+.list li .acts{display:flex;gap:6px;flex-shrink:0}
+.list li button.go{padding:8px 10px}
+
+.biotext{white-space:pre-wrap;font-size:.9rem;line-height:1.6}
+.wt{font-size:.8rem}
+.list li .id{display:block;margin-top:2px}
+
+.steps{padding-left:20px}.steps li{margin:10px 0}
+.steps code{display:inline-block;word-break:break-all}
+button.copy{padding:2px 8px;font-size:.75rem;margin-left:6px}
+#dlBar{width:100%;height:10px;accent-color:var(--gold)}
+#dlMsg,#ollamaMsg,#voiceMsg{white-space:pre-wrap}
+
+/* the story opens inside the list, under the person tapped */
+.list li#story{display:block;cursor:default;background:none;border:0;padding:0;margin:0 0 12px}
+.list li#story:hover{border:0}
+.list li.sel{border-color:var(--gold);background:#22402b}
+.list li[data-person]{scroll-margin-top:8px}
+
+.radius{margin:10px 0 0;color:var(--mut);font-size:.9rem}.radius input{width:6.5em}.radius input,.radius select{font:inherit;padding:6px 8px}
+.near{margin:12px 0;color:var(--mut)}.near input[type=number]{width:5.5em}.near input,.near select{font:inherit;padding:6px 8px}.near input[type=text],.near #nearPlace{margin-top:6px;width:100%;box-sizing:border-box}

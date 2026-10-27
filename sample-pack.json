@@ -1,0 +1,80 @@
+{
+ "schemaVersion": 1,
+ "name": "Sample (fictional)",
+ "source": "built-in demo",
+ "builtAt": "2026-10-26T00:00:00.000Z",
+ "people": [
+  {
+   "id": "Sample-1",
+   "userId": "",
+   "name": "Ada Sample",
+   "gender": "Female",
+   "birth": {
+    "date": "1850-03-02",
+    "place": "Raton, New Mexico"
+   },
+   "death": {
+    "date": "1921-07-09",
+    "place": "Raton, New Mexico"
+   },
+   "categories": [
+    "Fairmont_Cemetery,_Raton,_New_Mexico"
+   ],
+   "relationship": "the great-great-grandmother of Sam Sample"
+  },
+  {
+   "id": "Sample-2",
+   "userId": "",
+   "name": "Walter Sample",
+   "gender": "Male",
+   "birth": {
+    "date": "1846",
+    "place": "Dayton, Ohio"
+   },
+   "death": {
+    "date": "1919-11-20",
+    "place": "Raton, New Mexico"
+   },
+   "categories": [
+    "Fairmont_Cemetery,_Raton,_New_Mexico"
+   ],
+   "relationship": "the great-great-grandfather of Sam Sample"
+  },
+  {
+   "id": "Sample-3",
+   "userId": "",
+   "name": "Edith Placeholder",
+   "gender": "Female",
+   "birth": {
+    "date": "1879",
+    "place": "Raton, New Mexico"
+   },
+   "death": {
+    "date": "1955",
+    "place": "Raton, New Mexico"
+   },
+   "categories": [
+    "Fairmont_Cemetery,_Raton,_New_Mexico"
+   ]
+  }
+ ],
+ "places": [
+  {
+   "key": "cem:Fairmont_Cemetery,_Raton,_New_Mexico",
+   "kind": "cemetery",
+   "name": "Fairmont Cemetery, Raton, New Mexico",
+   "lat": 36.9,
+   "lng": -104.439,
+   "personIds": [
+    "Sample-1",
+    "Sample-2",
+    "Sample-3"
+   ]
+  }
+ ],
+ "stats": {
+  "people": 3,
+  "excludedLiving": 0,
+  "unplaced": 0
+ }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "tour-of-the-branches",
+  "version": "0.9.20",
+  "type": "module",
+  "description": "Offline-first cemetery tour from WikiTree data, narrated by a local open-weight model.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "node serve.js"
+  },
+  "license": "MIT",
+  "author": "Azure Robinson",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robinson27225/branch-tour.git"
+  }
+}
