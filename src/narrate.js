@@ -95,12 +95,12 @@ const approxYears = (d) => {
 const SENTENCE_SPLIT = /(?<=[.!?])\s+(?=[A-Z"'(])/;
 const VITAL_RE = /\b(was born|were born|born on|born in|was baptized|was baptised|died|passed away|was buried)\b[^.]*\d{4}/i;
 
-export function bioExcerpt(bio, max = 380) {
+export function bioExcerpt(bio, max = 380, skip = () => false) {
   if (!bio) return '';
   const sentences = bio.split(/\n+/)
     .filter((line) => line.trim().length >= 40 && /[.!?"')]$/.test(line.trim()))
     .flatMap((line) => line.trim().split(SENTENCE_SPLIT));
-  const story = sentences.filter((s) => !VITAL_RE.test(s));
+  const story = sentences.filter((s) => !VITAL_RE.test(s) && !skip(s));
   const pool = story.length ? story : sentences;
   let out = '';
   for (const s of pool) {
@@ -137,7 +137,11 @@ export function templateNarration(person, place) {
     const via = person.relation && person.relation.via;
     parts.push(`They were ${person.relationship}${via ? `, through their shared ancestor ${via}` : ''}.`);
   }
-  const excerpt = bioExcerpt(person.bio);
+  // "She married William Bird in 1881." only says again what the marriage line above already said. A list of marriages
+  // (joined with ";") can name someone who has no profile, so that stays.
+  const spouseNames = (fam.spouses || []).map((sp) => (sp.name || '').replace(/\s*\(.*$/, '').toLowerCase()).filter(Boolean);
+  const restatesMarriage = (sentence) => /\bmarried\b/i.test(sentence) && !sentence.includes(';') && spouseNames.some((n) => sentence.toLowerCase().includes(n));
+  const excerpt = bioExcerpt(person.bio, 380, restatesMarriage);
   if (excerpt) parts.push(excerpt);
   return parts.join(' ');
 }
@@ -194,34 +198,48 @@ export function isGrounded(text, person, place) {
 // Older saved settings only had useModel, which meant Ollama.
 export const engineOf = (s = {}) => s.engine || (s.useModel ? 'ollama' : 'template');
 
-// `generate(prompt) -> text` is the in-browser model, passed in by the app when it is loaded.
-export async function narrate(person, place, settings = {}, fetchFn = fetch, generate = null) {
+// A small model sometimes loses the thread (a loop of dashes, a repeated name) or invents a year. That is chance as much as
+// fault: asking again, a little more carefully each time, usually gives a clean story, so the in-browser model gets this many tries.
+export const BROWSER_TRIES = 3;
+
+// `generate(prompt, { attempt }) -> text` is the in-browser model, passed in by the app when it is loaded.
+// `onRetry(nextAttempt, tries, reason)` lets the screen say that another try is under way.
+export async function narrate(person, place, settings = {}, fetchFn = fetch, generate = null, onRetry = () => {}) {
   const s = { ...DEFAULT_SETTINGS, ...settings };
   const engine = engineOf(s);
   const fallback = (reason) => ({ text: templateNarration(person, place), source: 'template', reason });
   if (engine === 'template') return fallback('model off');
   const prompt = buildPrompt(person, place, s.tone);
+  // '' when the text is good, otherwise why it was refused.
+  const problemWith = (text) => {
+    if (!text) return 'empty reply';
+    if (looksBroken(text)) return 'the model\'s answer was garbled';
+    const stray = ungroundedWord(text, person, place);
+    return stray ? `the model mentioned "${stray}", which the record does not support` : '';
+  };
   try {
-    let text, source;
     if (engine === 'browser') {
       if (!generate) return fallback('Gemma is not downloaded on this device');
-      text = ((await generate(prompt)) || '').trim();
-      source = 'Gemma in this browser';
-    } else {
-      const res = await fetchFn(s.ollamaUrl.replace(/\/$/, '') + '/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: s.model, prompt, stream: false, options: { temperature: 0.4, num_predict: 260 } }),
-      });
-      if (!res.ok) return fallback(`model HTTP ${res.status}`);
-      text = ((await res.json()).response || '').trim();
-      source = `${s.model} via Ollama`;
+      let last = { text: '', problem: '' };
+      for (let attempt = 0; attempt < BROWSER_TRIES; attempt++) {
+        const text = ((await generate(prompt, { attempt })) || '').trim();
+        const problem = problemWith(text);
+        if (!problem) return { text, source: 'Gemma in this browser' };
+        last = { text, problem };
+        if (attempt + 1 < BROWSER_TRIES) onRetry(attempt + 2, BROWSER_TRIES, problem);
+      }
+      const out = fallback(`${last.problem} (${BROWSER_TRIES} tries)`);
+      return last.text ? { ...out, attempt: last.text } : out;
     }
-    if (!text) return fallback('empty reply');
-    if (looksBroken(text)) return { ...fallback('the model\'s answer was garbled'), attempt: text };
-    const stray = ungroundedWord(text, person, place);
-    if (stray) return { ...fallback(`the model mentioned "${stray}", which the record does not support`), attempt: text };
-    return { text, source };
+    const res = await fetchFn(s.ollamaUrl.replace(/\/$/, '') + '/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: s.model, prompt, stream: false, options: { temperature: 0.4, num_predict: 260 } }),
+    });
+    if (!res.ok) return fallback(`model HTTP ${res.status}`);
+    const text = (((await res.json()).response) || '').trim();
+    const problem = problemWith(text);
+    return problem ? (text ? { ...fallback(problem), attempt: text } : fallback(problem)) : { text, source: `${s.model} via Ollama` };
   } catch (e) {
     return fallback(engine === 'browser' ? 'Gemma could not run here' : 'model unreachable');
   }

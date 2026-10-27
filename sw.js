@@ -1,5 +1,5 @@
 // Keeps the app working with no signal in a cemetery, without ever hiding an update.
-const CACHE = 'branches-0.9.21'; // the saved stories and clips live in 'ghost-tour-media', kept across updates
+const CACHE = 'branches-0.9.22'; // the saved stories and clips live in 'ghost-tour-media', kept across updates
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest',
   'src/pack.js', 'src/kinship.js', 'src/quality.js', 'src/report.js', 'src/connections.js', 'src/xlsx.js', 'src/geo.js', 'src/geocode.js', 'src/nearby.js', 'src/sort.js', 'src/offline.js', 'src/narrate.js', 'src/store.js', 'src/builder.js', 'src/voice.js', 'src/webllm.js', 'src/ollama.js', 'src/version.js', 'sample-pack.json',
   'img/wt-brand.png', 'fonts/roboto-mono-latin-400-normal.woff2', 'fonts/roboto-mono-latin-700-normal.woff2'];

@@ -96,10 +96,17 @@ export function friendlyLoadError(err) {
 
 export const isLoaded = (modelId) => !!loaded && loaded.id === modelId;
 
+// Each retry is a little more careful than the one before: cooler sampling, and a firmer push away from repeating itself.
+const SAMPLING = [
+  { temperature: 0.4, repetition_penalty: 1.1 },
+  { temperature: 0.2, repetition_penalty: 1.15 },
+  { temperature: 0.3, repetition_penalty: 1.2 },
+];
+
 export function generatorFor(engine) {
-  return async (prompt, { maxTokens = 260 } = {}) => {
+  return async (prompt, { maxTokens = 260, attempt = 0 } = {}) => {
     const r = await engine.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }], temperature: 0.4, top_p: 0.9, repetition_penalty: 1.1, max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }], top_p: 0.9, max_tokens: maxTokens, ...SAMPLING[Math.min(attempt, SAMPLING.length - 1)],
     });
     return (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content) || '';
   };

@@ -191,3 +191,43 @@ test('narrate refuses garbled model text and keeps it for the member to see', as
   assert.match(r.reason, /garbled/);
   assert.match(r.attempt, /John Cook/);
 });
+
+const CLEAN = 'Ada Sample rests here in Raton. She was born in 1850 and she lived there until 1921.';
+const DASHES = 'Ada Sample was a woman of Raton\n' + Array(25).fill('- ').join('\n');
+
+test('Gemma in the browser gets three tries: a garbled first answer is followed by a clean second one', async () => {
+  const seen = [], retries = [];
+  const gen = async (prompt, o) => { seen.push(o.attempt); return o.attempt === 0 ? DASHES : CLEAN; };
+  const r = await narrate(person, place, { engine: 'browser' }, fetch, gen, (n, tries, why) => retries.push([n, tries, why]));
+  assert.equal(r.source, 'Gemma in this browser');
+  assert.equal(r.text, CLEAN);
+  assert.deepEqual(seen, [0, 1]);
+  assert.deepEqual(retries, [[2, 3, 'the model\'s answer was garbled']]);
+});
+
+test('after three bad answers the plain story is used, the last answer is kept to show, and the reason says how many tries', async () => {
+  let calls = 0;
+  const r = await narrate(person, place, { engine: 'browser' }, fetch, async () => { calls++; return calls < 3 ? 'She sailed in 1861.' : DASHES; });
+  assert.equal(calls, 3);
+  assert.equal(r.source, 'template');
+  assert.match(r.reason, /garbled.*3 tries/);
+  assert.equal(r.attempt, DASHES.trim());
+});
+
+test('a model that throws is not retried, and Ollama is asked only once', async () => {
+  let calls = 0;
+  const boom = await narrate(person, place, { engine: 'browser' }, fetch, async () => { calls++; throw new Error('GPU lost'); });
+  assert.equal(calls, 1); assert.match(boom.reason, /could not run/);
+  let asked = 0;
+  const f = async () => { asked++; return { ok: true, status: 200, json: async () => ({ response: 'She sailed in 1861.' }) }; };
+  const r = await narrate(person, place, { engine: 'ollama', model: 'gemma3' }, f);
+  assert.equal(asked, 1); assert.equal(r.source, 'template');
+});
+
+test('each retry samples more carefully than the one before', async () => {
+  const seen = [];
+  const engine = { chat: { completions: { create: async (o) => { seen.push([o.temperature, o.repetition_penalty]); return { choices: [{ message: { content: 'x' } }] }; } } } };
+  const gen = generatorFor(engine);
+  await gen('p', { attempt: 0 }); await gen('p', { attempt: 1 }); await gen('p', { attempt: 9 });
+  assert.deepEqual(seen, [[0.4, 1.1], [0.2, 1.15], [0.3, 1.2]]);
+});

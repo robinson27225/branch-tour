@@ -204,3 +204,16 @@ test('a distance limit: miles or km, only places inside it, and the nearest one 
   assert.equal(fmt(16093, 'mi'), '10 mi'); assert.equal(fmt(2414, 'mi'), '1.5 mi'); assert.equal(fmt(100, 'mi'), '330 ft'); assert.equal(fmt(4000), '4.0 km');
   assert.equal(defaultUnit('en-US'), 'mi'); assert.equal(defaultUnit('en-GB'), 'mi'); assert.equal(defaultUnit('fr-FR'), 'km'); assert.equal(defaultUnit(''), 'km');
 });
+
+test('the plain story does not say a marriage twice, but keeps a list of marriages that names someone without a profile', () => {
+  const joanna = { id: 'Barstow-803', name: 'Joanna Aileen Barstow', gender: 'Female', birth: { date: '1863-06-25', place: 'Stafford, Oregon' }, death: { date: '1962-01-08', place: 'Molalla, Oregon' },
+    family: { parents: [], spouses: [{ name: 'William Milton Bird (1860–1942)', date: '1881', place: 'Oregon, United States' }] },
+    bio: 'Joanna was a farm wife who raised six children near Molalla in a house her husband built. She married WIlliam Milton Bird in 1881. She married William Milton Bird in 1881.' };
+  const t = templateNarration(joanna, { kind: 'cemetery', name: 'Molalla Memorial Cemetery, Molalla, Oregon' });
+  assert.equal((t.match(/married William Milton Bird/gi) || []).length, 1, t);   // the misspelt copy is a different name, so it is the one that is left
+  assert.match(t, /farm wife who raised six children/);
+  const quinten = { id: 'Wyland-1', name: 'Quinten Wyland', gender: 'Male', birth: { date: '1919' }, death: { date: '2005' },
+    family: { parents: [], spouses: [{ name: 'Betty Zane Rider (1922–2011)', date: '1940-08-06', place: 'Clark, Washington' }] },
+    bio: 'He married Betty Zane Rider (17 July 1922 - 3 June 2011) 10 August 1940; Betty Lou (3 April 1931 - 15 October 2000).' };
+  assert.match(templateNarration(quinten, null), /Betty Lou \(3 April 1931/);
+});

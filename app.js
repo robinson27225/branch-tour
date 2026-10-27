@@ -343,7 +343,10 @@ async function storyFor(pack, place, person, fresh = false) {
     if (kept && (kept.source === 'template' || !ungroundedWord(kept.text, person, place))) return kept;
   }
   const gen = await browserGenerator();
-  const out = await narrate(person, place, state.settings, fetch, gen);
+  const out = await narrate(person, place, state.settings, fetch, gen, (n, tries) => {
+    const box = $('story');
+    if (box && state.personId === person.id) box.innerHTML = `<p class="hint">That answer did not pass the checks. Trying again (${n} of ${tries})…</p>`;
+  });
   if (!gen && state.settings.engine === 'browser' && state.browserReason) out.reason = state.browserReason;
   // A template that stands in for an unreachable model is not kept, so the model gets another chance.
   if (out.source !== 'template' || !state.settings.useModel) await media.putJson(key, out);
@@ -471,6 +474,7 @@ function bindSettings() {
   $('voiceList').innerHTML = VOICE_SUGGESTIONS.map(([id, label]) => `<option value="${id}">${esc(label)}</option>`).join('');
   $('cmdPull').textContent = pullCommand(state.settings.model || DEFAULT_SETTINGS.model);
   $('cmdServe').textContent = serveCommand(location.origin);
+  $('cmdMac').textContent = `launchctl setenv OLLAMA_ORIGINS "${location.origin}"`;
 
   const showRows = () => {
     $('elevenRow').hidden = $('voice').value !== 'eleven';

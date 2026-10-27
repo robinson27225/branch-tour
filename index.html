@@ -91,7 +91,7 @@
       <ol class="steps">
         <li>Install Ollama from <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a>.</li>
         <li>Get Gemma: <code id="cmdPull"></code> <button type="button" class="copy" data-copy="cmdPull">Copy</button></li>
-        <li>Start Ollama so this page may talk to it: <code id="cmdServe"></code> <button type="button" class="copy" data-copy="cmdServe">Copy</button><br><span class="hint">If Ollama is already running, quit it first. On Windows, set the OLLAMA_ORIGINS environment variable to this address and restart Ollama.</span></li>
+        <li>Start Ollama so this page may talk to it: <code id="cmdServe"></code> <button type="button" class="copy" data-copy="cmdServe">Copy</button><br><span class="hint">If it says "address already in use", Ollama is already running (the Mac app starts it as soon as it is installed). Quit it from the menu bar icon and run the command again. Or, on a Mac, keep the app and run <code id="cmdMac"></code> <button type="button" class="copy" data-copy="cmdMac">Copy</button> once, then quit and reopen the Ollama app. On Windows, set the OLLAMA_ORIGINS environment variable to this address and restart Ollama.</span></li>
       </ol>
       <label>Ollama address <input id="ollamaUrl"></label>
       <label>Model <input id="model"></label>
