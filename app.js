@@ -3,7 +3,7 @@ import { readXlsxRows } from './src/xlsx.js';
 import { isReportJson, reportToPack } from './src/report.js';
 import { parseConnectionsHtml, addConnections } from './src/connections.js';
 import { geocodePack } from './src/geocode.js';
-import { nearestPlaces, placesWithin, radiusMeters, defaultUnit, formatDistance } from './src/geo.js';
+import { nearestPlaces, placesWithin, radiusMeters, defaultUnit, formatDistance, parseCoordinates } from './src/geo.js';
 import { limitToNearby } from './src/nearby.js';
 import { SORTS, DEFAULT_SORT, sortPeople } from './src/sort.js';
 import { offlineReport, mark } from './src/offline.js';
@@ -11,7 +11,7 @@ import { geocodeName } from './src/geocode.js';
 import { narrate, templateNarration, engineOf, ungroundedWord, DEFAULT_SETTINGS } from './src/narrate.js';
 import { BROWSER_MODELS, webGpuAvailable, isDownloaded, loadModel, isLoaded, generatorFor, removeModel, friendlyLoadError } from './src/webllm.js';
 import { checkOllama, describeOllama, pullCommand, serveCommand } from './src/ollama.js';
-import { buildTourPack, makeApi } from './src/builder.js';
+import { buildTourPack, makeApi, parseProfileIds } from './src/builder.js';
 import { VERSION, OWNER_ID } from './src/version.js';
 import { MediaStore, getClip, hasClip, storyKey, VOICE_DEFAULTS, VOICE_SUGGESTIONS } from './src/voice.js';
 import { savePack, listPacks, deletePack, loadSettings, saveSettings } from './src/store.js';
@@ -162,6 +162,7 @@ const modeOf = () => document.querySelector('input[name=mode]:checked').value;
 function syncMode() {
   $('gensRow').hidden = modeOf() !== 'ancestors';
   $('catRow').hidden = modeOf() !== 'category';
+  $('extraRow').hidden = modeOf() !== 'category';
   $('degRow').hidden = modeOf() !== 'cc7';
 }
 $('buildForm').addEventListener('change', syncMode);
@@ -213,7 +214,7 @@ $('buildForm').addEventListener('submit', async (e) => {
     status('Contacting WikiTree…', { pct: 0 });
     const pack = await buildTourPack({
       api: makeApi(), startId, mode: modeOf(), generations: Number($('gens').value), maxDegree: Number($('degrees').value),
-      category: $('category').value, onProgress: status,
+      category: $('category').value, extraIds: parseProfileIds($('extraIds').value), onProgress: status,
     });
     if (!pack.people.length) return status('WikiTree returned no public, deceased profiles for that choice.', { error: true });
     await finish(pack, reachNote(pack), near);
@@ -272,7 +273,12 @@ function renderPlace(pack, place) {
   const by = SORTS.some((x) => x.id === state.settings.sort) ? state.settings.sort : DEFAULT_SORT;
   const people = sortPeople(place.personIds.map((id) => personById(pack, id)), by);
   const sorter = `<p class="radius"><label>Sort by <select id="sortBy">${SORTS.map((x) => `<option value="${x.id}"${x.id === by ? ' selected' : ''}>${esc(x.label)}</option>`).join('')}</select></label></p>`;
-  $('tour').innerHTML = `<button id="back">← All places</button><h2>${esc(place.name)}</h2>${prep}${sorter}
+  const where = place.lat === null ? 'not on the map' : place.approximate ? 'approximate' : `${place.lat.toFixed(5)}, ${place.lng.toFixed(5)}`;
+  const position = `<details class="panel"><summary>Where this place is (${esc(where)})</summary>
+    <label>Latitude and longitude <input id="posInput" placeholder="45.120541, -122.590745" autocomplete="off"></label>
+    <button type="button" id="posSet">Set it</button> <button type="button" id="posGps">Use my location</button>
+    <p class="hint" id="posMsg" role="status">Paste the coordinates from a map app or from WikiTree's category page, or stand at the gate and use your location.</p></details>`;
+  $('tour').innerHTML = `<button id="back">← All places</button><h2>${esc(place.name)}</h2>${prep}${position}${sorter}
     <ul class="list">${people.map((p) => `<li data-person="${esc(p.id)}"><span>${esc(p.name)}<small>${esc(p.birth.date)} – ${esc(p.death.date)}${p.relationship ? ' · ' + esc(p.relationship) : p.relation && p.relation.kind === 'untraced' ? ' · relationship not traced' : ''}</small><small class="id">${wtLink(p.id)}</small></span></li>`).join('')}</ul>`;
 }
 
@@ -290,6 +296,19 @@ $('tour').addEventListener('click', async (e) => {
     return tell(pack, false);
   }
   if (e.target.id === 'again') { unlockAudio(); return tell(pack, true); }
+  if (e.target.id === 'posSet') {
+    const at = parseCoordinates($('posInput').value);
+    if (!at) return ($('posMsg').textContent = 'Could not read that. Type two numbers, for example 45.120541, -122.590745.');
+    return setPlacePosition(pack, currentPlace(pack), at);
+  }
+  if (e.target.id === 'posGps') {
+    if (!navigator.geolocation) return ($('posMsg').textContent = 'This browser has no GPS access.');
+    $('posMsg').textContent = 'Getting your location…';
+    return navigator.geolocation.getCurrentPosition(
+      (p) => setPlacePosition(pack, currentPlace(pack), { lat: p.coords.latitude, lng: p.coords.longitude }),
+      (err) => { $('posMsg').textContent = 'Could not get your location: ' + err.message; },
+      { enableHighAccuracy: true, timeout: 20000 });
+  }
   if (e.target.id === 'prepare') return prepare(pack);
 });
 
@@ -302,6 +321,14 @@ $('tour').addEventListener('change', (e) => {
   saveSettings(state.settings);
   renderTour();
 });
+
+// A position typed in or taken from the phone replaces the map lookup's guess, and is saved with the pack.
+async function setPlacePosition(pack, place, at) {
+  if (!place) return;
+  place.lat = at.lat; place.lng = at.lng; delete place.approximate;
+  await savePack(pack);
+  renderTour();
+}
 
 const currentPlace = (pack) => pack.places.find((p) => p.key === state.placeKey);
 

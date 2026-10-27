@@ -80,3 +80,11 @@ test('the offline check and the Gemma crash note are wired up', () => {
   assert.ok(!/await loadModel\(/.test(app.replace(/async function guardedLoad[\s\S]*?\n}\n/, '')), 'every Gemma load goes through the crash note');
   assert.match(read('sw.js'), /src\/offline\.js/);
 });
+
+test('a place can be positioned by hand, and extra profiles can be named on the build form', () => {
+  assert.ok(html.includes('id="extraIds"'));
+  assert.match(app, /extraIds: parseProfileIds\(/);
+  assert.match(app, /e\.target\.id === 'posSet'/);
+  assert.match(app, /e\.target\.id === 'posGps'/);
+  assert.match(app, /setPlacePosition\(/);
+});

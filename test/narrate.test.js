@@ -228,3 +228,12 @@ test('a count the record states in digits may be written in words, and the other
   const wordy = { ...margaret, bio: 'Margaret was one of six children on the farm at Molalla.' };
   assert.equal(ungroundedWord('Margaret Luella Bagby was one of 6 children at Molalla.', wordy, cem), '');
 });
+
+test('parseCoordinates reads either order and rejects what is not a position', async () => {
+  const { parseCoordinates } = await import('../src/geo.js');
+  assert.deepEqual(parseCoordinates('45.120541, -122.590745'), { lat: 45.120541, lng: -122.590745 });
+  assert.deepEqual(parseCoordinates('45.120541 -122.590745'), { lat: 45.120541, lng: -122.590745 });
+  assert.deepEqual(parseCoordinates('-122.590745 45.120541'), { lat: 45.120541, lng: -122.590745 });   // longitude first, as typed from a phone
+  assert.deepEqual(parseCoordinates('45.1206017,-122.5896988'), { lat: 45.1206017, lng: -122.5896988 });
+  for (const bad of ['', 'Molalla', '45.1', '1 2 3', '0, 0', '95, 200']) assert.equal(parseCoordinates(bad), null, bad);
+});

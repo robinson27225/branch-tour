@@ -48,3 +48,14 @@ export function formatDistance(m, unit = 'km') {
   if (m < 950) return `${Math.round(m / 10) * 10} m`;
   return `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
 }
+
+// "45.120541, -122.590745", "45.120541 -122.590745" or longitude first ("-122.590745 45.120541"), as a phone's
+// map app or a WikiTree category page gives it. When one number cannot be a latitude (beyond 90), it must be the longitude.
+export function parseCoordinates(text) {
+  const nums = String(text || '').match(/-?\d+(?:\.\d+)?/g);
+  if (!nums || nums.length !== 2) return null;
+  let [a, b] = nums.map(Number);
+  if (Math.abs(a) > 90 && Math.abs(b) <= 90) [a, b] = [b, a];
+  if (Math.abs(a) > 90 || Math.abs(b) > 180 || (a === 0 && b === 0)) return null;
+  return { lat: a, lng: b };
+}

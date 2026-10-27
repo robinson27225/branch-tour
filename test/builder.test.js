@@ -417,3 +417,23 @@ test('fetchPeople carries on past WikiTree\'s "Maximum number of profiles" statu
   const refusing = { getPeople: async () => ['Maximum number of profiles (1025) reached.', {}, {}] };
   await assert.rejects(fetchPeople({ api: refusing, keys: ['Test-1'], fields: ['Id'], params: {} }), /Maximum number of profiles/);
 });
+
+test('category page links and typed IDs are read, so someone Plus has not listed yet still gets in, once checked', async () => {
+  const { idsFromCategoryHtml, parseProfileIds, fetchCategoryMembers } = await import('../src/builder.js');
+  const html = '<a href="/wiki/Harris-77162">Herman Harris</a> <a href="https://www.wikitree.com/wiki/Orem-182">Betty</a> <a href="/wiki/Category:Molalla,_Oregon">c</a> <a href="/wiki/Space:Cemeterist">s</a> <a href="/wiki/Help:Foo-1">h</a>';
+  assert.deepEqual(idsFromCategoryHtml(html), ['Harris-77162', 'Orem-182']);
+  assert.deepEqual(parseProfileIds('Harris-77162, https://www.wikitree.com/wiki/Orem-182;\nnonsense  D\'Allemand-14'), ['Harris-77162', 'Orem-182', "D'Allemand-14"]);
+  assert.deepEqual(await fetchCategoryMembers('A B', async () => { throw new TypeError('blocked'); }), []);
+
+  // Plus lists only Far-50; the category page and the typed list add Far-90 and a stranger who is not in the category.
+  const w = world();
+  w[90] = P(90, 'Far-90', 'Newcomer', { Categories: [CEM], BirthDate: '1922-06-03', DeathDate: '2000-05-06' });
+  w[91] = P(91, 'Far-91', 'Stranger', { Categories: ['Somewhere_Else'] });
+  const fetchFn = async (url) => (url.includes('Profiles.json')
+    ? { ok: true, text: async () => JSON.stringify({ response: { profiles: [50] } }) }
+    : { ok: true, text: async () => '<a href="/wiki/Far-90">Newcomer</a> <a href="/wiki/Far-91">S</a>' });
+  const pack = await buildTourPack({ api: worldApi(w), startId: 'Test-1', mode: 'category', category: CEM, now: NOW, fetchFn });
+  assert.deepEqual(pack.people.map((p) => p.id).sort(), ['Far-50', 'Far-90']);
+  const typed = await buildTourPack({ api: worldApi(w), startId: 'Test-1', mode: 'category', category: CEM, now: NOW, extraIds: ['Test-2'], fetchFn: json({ response: { profiles: [50] } }) });
+  assert.deepEqual(typed.people.map((p) => p.id).sort(), ['Far-50', 'Test-2']);
+});

@@ -128,6 +128,35 @@ export function idsFromPlusHtml(html) {
   return [...ids];
 }
 
+// WikiTree Plus is a day or more behind WikiTree, so someone added to the category yesterday is missing from its list.
+// The category page itself is current, and links every member, so its profile links are read too. Plus the member can
+// name profiles by hand. None of these are trusted: every profile is still checked for the category when it is read.
+export function idsFromCategoryHtml(html) {
+  const ids = new Set();
+  for (const m of String(html).matchAll(/href="(?:https?:\/\/www\.wikitree\.com)?\/wiki\/([^"\s<>#?&\/:]+-\d+)"/g)) {
+    try { ids.add(decodeURIComponent(m[1])); } catch { ids.add(m[1]); }
+  }
+  return [...ids];
+}
+
+export async function fetchCategoryMembers(category, fetchFn = fetch) {
+  const title = encodeURIComponent('Category:' + String(category).replace(/ /g, '_')).replace(/%2C/g, ',').replace(/%3A/g, ':');
+  try {
+    const res = await fetchFn(`https://www.wikitree.com/wiki/${title}`);
+    return res.ok ? idsFromCategoryHtml(await res.text()) : [];
+  } catch { return []; }
+}
+
+// "Harris-77162, Orem-182" or one per line -> ['Harris-77162', 'Orem-182']; anything that is not a WikiTree ID is dropped.
+export function parseProfileIds(text) {
+  const out = new Set();
+  for (const part of String(text || '').split(/[\s,;]+/)) {
+    const m = /(?:wikitree\.com\/wiki\/)?([^\s/?#]+-\d+)$/.exec(part.trim());
+    if (m) { try { out.add(decodeURIComponent(m[1])); } catch { out.add(m[1]); } }
+  }
+  return [...out];
+}
+
 // The cemetery's own position, from the category page's {{CategoryInfoBox Cemetery ... |coordinate=45.12, -122.58}}.
 // The page's source (action=raw) has it as text; the ordinary page only links it into map URLs, so those are read as a second try.
 const inRange = (lat, lng) => Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0);
@@ -416,7 +445,7 @@ export function parseCategoryInput(s) {
 // ---------- the builder ----------
 
 export async function buildTourPack({
-  api, startId, mode = 'ancestors', generations = 6, maxDegree = 7, category = '', now, onProgress = () => {}, wait = sleep,
+  api, startId, mode = 'ancestors', generations = 6, maxDegree = 7, category = '', extraIds = [], now, onProgress = () => {}, wait = sleep,
   fetchFn = fetch,
 }) {
   const start = String(startId || '').trim();
@@ -442,9 +471,13 @@ export async function buildTourPack({
     onProgress(`Asking WikiTree Plus who is in ${cat.replace(/_/g, ' ')}…`);
     const plus = await fetchCategoryIds(cat, fetchFn);
     if (!plus.ids) throw new Error(plusProblemMessage(plus.problem, cat));
-    onProgress(`${plus.ids.length} profiles found. Reading them and their biographies…`);
-    withBio = plus.ids.length <= BIO_LIMIT;
-    const found = await fetchByIds({ api, ids: plus.ids, fields: withBio ? [...FIELDS, 'Bio'] : FIELDS, onProgress, wait });
+    onProgress('Checking the category page for anyone Plus has not listed yet…');
+    const onPage = await fetchCategoryMembers(cat, fetchFn);
+    const asked = [...new Set([...parseProfileIds((extraIds || []).join(' ')), ...onPage])];
+    const allIds = [...plus.ids, ...asked];
+    onProgress(`${plus.ids.length} profiles found${asked.length ? `, and ${asked.length} more to check` : ''}. Reading them and their biographies…`);
+    withBio = allIds.length <= BIO_LIMIT;
+    const found = await fetchByIds({ api, ids: allIds, fields: withBio ? [...FIELDS, 'Bio'] : FIELDS, onProgress, wait });
 
     let used = cat, members = Object.entries(found).filter(([, p]) => inCategory(p, wanted));
     if (!members.length) {
