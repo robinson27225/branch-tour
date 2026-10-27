@@ -217,3 +217,14 @@ test('the plain story does not say a marriage twice, but keeps a list of marriag
     bio: 'He married Betty Zane Rider (17 July 1922 - 3 June 2011) 10 August 1940; Betty Lou (3 April 1931 - 15 October 2000).' };
   assert.match(templateNarration(quinten, null), /Betty Lou \(3 April 1931/);
 });
+
+test('a count the record states in digits may be written in words, and the other way round; a count it does not state is still refused', () => {
+  const margaret = { id: 'Bagby-165', name: 'Margaret Luella Bagby', gender: 'Female', birth: { date: '1855-11-06', place: 'Molalla, Oregon' }, death: { date: '1948-06-28', place: 'Clackamas, Oregon' },
+    bio: 'In 1860, 4 year old Margaret was one of 6 children living on the family farm at Molalla with parents William and Harriet.' };
+  const cem = { kind: 'cemetery', name: 'Molalla Memorial Cemetery, Molalla, Oregon' };
+  assert.equal(ungroundedWord('Margaret Luella Bagby was one of six children on a farm at Molalla.', margaret, cem), '');
+  assert.equal(ungroundedWord('Margaret Luella Bagby grew up with 6 children around her at Molalla.', margaret, cem), '');
+  assert.match(ungroundedWord('Margaret Luella Bagby was one of seven children on a farm at Molalla.', margaret, cem), /seven children/);
+  const wordy = { ...margaret, bio: 'Margaret was one of six children on the farm at Molalla.' };
+  assert.equal(ungroundedWord('Margaret Luella Bagby was one of 6 children at Molalla.', wordy, cem), '');
+});

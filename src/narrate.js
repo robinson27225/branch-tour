@@ -163,6 +163,10 @@ const FILLER = ['peaceful', 'remembered as', 'beloved', 'part of this community'
 // "a father to one child", "five sisters": a count of relatives is a claim the record must make itself.
 const COUNT_RE = /\b(?:an? only|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\s+(?:\w+\s+)?(?:child|children|son|sons|daughter|daughters|brother|brothers|sister|sisters|sibling|siblings|grandchild|grandchildren)\b/gi;
 
+// "six children" and "6 children" are the same claim, so number words are compared as digits.
+const NUMBER_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+const asDigits = (t) => t.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/gi, (w) => NUMBER_WORDS[w.toLowerCase()]);
+
 // Words the story uses that the record does not have: a year, or a name or place in mid-sentence.
 // Returns the first offending word, or '' when the story sticks to the record.
 export function ungroundedWord(text, person, place) {
@@ -173,7 +177,8 @@ export function ungroundedWord(text, person, place) {
   const lower = text.toLowerCase();
   for (const phrase of FILLER) if (lower.includes(phrase) && !facts.toLowerCase().includes(phrase)) return phrase;
 
-  for (const claim of text.match(COUNT_RE) || []) if (!facts.toLowerCase().includes(claim.toLowerCase())) return claim;
+  const factDigits = asDigits(facts.toLowerCase());
+  for (const claim of text.match(COUNT_RE) || []) if (!factDigits.includes(asDigits(claim.toLowerCase()))) return claim;
 
   const known = new Set((facts.toLowerCase().match(/[a-z\u00c0-\u024f]+/g)) || []);
   // The first word after a full stop, colon, quote mark, dash or new line is capitalised anyway, so only later words say anything.
