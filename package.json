@@ -1,6 +1,6 @@
 {
   "name": "tour-of-the-branches",
-  "version": "0.9.25",
+  "version": "0.9.26",
   "type": "module",
   "description": "Offline-first cemetery tour from WikiTree data, narrated by a local open-weight model.",
   "scripts": {

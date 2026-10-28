@@ -344,17 +344,24 @@ async function writeAll(pack, place) {
   if (!place) return;
   const people = place.personIds.map((id) => personById(pack, id));
   $('writeAll').disabled = true;
+  const plain = [];
   try {
     for (const [i, p] of people.entries()) {
       $('storiesMsg').textContent = `Writing ${i + 1} of ${people.length}: ${p.name}`;
       const out = await storyFor(pack, place, p);
-      // A plain story standing in for a model that could not run is not kept, so saying "done" would be untrue.
       if (out.source === 'template' && state.settings.useModel) {
-        $('storiesMsg').textContent = `Stopped at ${p.name}: the model could not write (${out.reason || 'unknown reason'}). Nothing more was saved. Fix that on the Narrator tab, or choose "Nothing" for plain stories.`;
-        return;
+        // The model ran and every try failed the checks (out.attempt): keep the plain story for this person and go on.
+        // Otherwise the model could not run at all, and going on would only repeat that, so stop and say why.
+        if (!out.attempt) {
+          $('storiesMsg').textContent = `Stopped at ${p.name}: the model could not write (${out.reason || 'unknown reason'}). Nothing more was saved. Fix that on the Narrator tab, or choose "Nothing" for plain stories.`;
+          return;
+        }
+        await media.putJson(storyKey(pack.name, p.id), out);
+        plain.push(p.name);
       }
     }
-    $('storiesMsg').textContent = `Done: ${people.length} stories are saved on this device.`;
+    $('storiesMsg').textContent = `Done: ${people.length} stories are saved on this device.` +
+      (plain.length ? ` ${plain.length} are the plain version because every try from the model failed the checks against the record: ${plain.join(', ')}. Press "tell it again" on them to try once more.` : '');
   } catch (err) { $('storiesMsg').textContent = err.message; }
   finally { $('writeAll').disabled = false; }
 }

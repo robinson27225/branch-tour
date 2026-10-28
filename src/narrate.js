@@ -203,9 +203,11 @@ export function isGrounded(text, person, place) {
 // Older saved settings only had useModel, which meant Ollama.
 export const engineOf = (s = {}) => s.engine || (s.useModel ? 'ollama' : 'template');
 
-// A small model sometimes loses the thread (a loop of dashes, a repeated name) or invents a year. That is chance as much as
-// fault: asking again, a little more carefully each time, usually gives a clean story, so the in-browser model gets this many tries.
-export const BROWSER_TRIES = 3;
+// A small model sometimes loses the thread (a loop of dashes, a repeated name) or invents a year or a name. That is chance
+// as much as fault: asking again, a little more carefully each time, usually gives a clean story, so any model gets this many tries.
+// A model that cannot be reached is not asked again.
+export const TRIES = 3;
+const OLLAMA_SAMPLING = [{ temperature: 0.4, repeat_penalty: 1.1 }, { temperature: 0.2, repeat_penalty: 1.15 }, { temperature: 0.3, repeat_penalty: 1.2 }];
 
 // `generate(prompt, { attempt }) -> text` is the in-browser model, passed in by the app when it is loaded.
 // `onRetry(nextAttempt, tries, reason)` lets the screen say that another try is under way.
@@ -214,6 +216,7 @@ export async function narrate(person, place, settings = {}, fetchFn = fetch, gen
   const engine = engineOf(s);
   const fallback = (reason) => ({ text: templateNarration(person, place), source: 'template', reason });
   if (engine === 'template') return fallback('model off');
+  if (engine === 'browser' && !generate) return fallback('Gemma is not downloaded on this device');
   const prompt = buildPrompt(person, place, s.tone);
   // '' when the text is good, otherwise why it was refused.
   const problemWith = (text) => {
@@ -222,30 +225,30 @@ export async function narrate(person, place, settings = {}, fetchFn = fetch, gen
     const stray = ungroundedWord(text, person, place);
     return stray ? `the model mentioned "${stray}", which the record does not support` : '';
   };
-  try {
-    if (engine === 'browser') {
-      if (!generate) return fallback('Gemma is not downloaded on this device');
-      let last = { text: '', problem: '' };
-      for (let attempt = 0; attempt < BROWSER_TRIES; attempt++) {
-        const text = ((await generate(prompt, { attempt })) || '').trim();
-        const problem = problemWith(text);
-        if (!problem) return { text, source: 'Gemma in this browser' };
-        last = { text, problem };
-        if (attempt + 1 < BROWSER_TRIES) onRetry(attempt + 2, BROWSER_TRIES, problem);
-      }
-      const out = fallback(`${last.problem} (${BROWSER_TRIES} tries)`);
-      return last.text ? { ...out, attempt: last.text } : out;
-    }
+  const ask = async (attempt) => {
+    if (engine === 'browser') return ((await generate(prompt, { attempt })) || '').trim();
     const res = await fetchFn(s.ollamaUrl.replace(/\/$/, '') + '/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: s.model, prompt, stream: false, options: { temperature: 0.4, num_predict: 260 } }),
+      body: JSON.stringify({ model: s.model, prompt, stream: false, options: { ...OLLAMA_SAMPLING[Math.min(attempt, TRIES - 1)], num_predict: 260 } }),
     });
-    if (!res.ok) return fallback(`model HTTP ${res.status}`);
-    const text = (((await res.json()).response) || '').trim();
-    const problem = problemWith(text);
-    return problem ? (text ? { ...fallback(problem), attempt: text } : fallback(problem)) : { text, source: `${s.model} via Ollama` };
+    if (!res.ok) throw Object.assign(new Error(`model HTTP ${res.status}`), { http: true });
+    return (((await res.json()).response) || '').trim();
+  };
+  const source = engine === 'browser' ? 'Gemma in this browser' : `${s.model} via Ollama`;
+  try {
+    let last = { text: '', problem: '' };
+    for (let attempt = 0; attempt < TRIES; attempt++) {
+      const text = await ask(attempt);
+      const problem = problemWith(text);
+      if (!problem) return { text, source };
+      last = { text, problem };
+      if (attempt + 1 < TRIES) onRetry(attempt + 2, TRIES, problem);
+    }
+    const out = fallback(`${last.problem} (${TRIES} tries)`);
+    return last.text ? { ...out, attempt: last.text } : out;
   } catch (e) {
+    if (e && e.http) return fallback(e.message);
     return fallback(engine === 'browser' ? 'Gemma could not run here' : 'model unreachable');
   }
 }

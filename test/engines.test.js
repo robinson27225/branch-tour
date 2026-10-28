@@ -214,14 +214,26 @@ test('after three bad answers the plain story is used, the last answer is kept t
   assert.equal(r.attempt, DASHES.trim());
 });
 
-test('a model that throws is not retried, and Ollama is asked only once', async () => {
+test('a model that throws, or an Ollama that answers with an error, is not retried; bad text from Ollama is', async () => {
   let calls = 0;
   const boom = await narrate(person, place, { engine: 'browser' }, fetch, async () => { calls++; throw new Error('GPU lost'); });
   assert.equal(calls, 1); assert.match(boom.reason, /could not run/);
   let asked = 0;
-  const f = async () => { asked++; return { ok: true, status: 200, json: async () => ({ response: 'She sailed in 1861.' }) }; };
+  const down = async () => { asked++; return { ok: false, status: 500, json: async () => ({}) }; };
+  const err = await narrate(person, place, { engine: 'ollama', model: 'gemma3' }, down);
+  assert.equal(asked, 1); assert.match(err.reason, /HTTP 500/);
+
+  const bodies = [];
+  const answers = ['Ada Sample lived near Mary in Raton for many years and kept bees there.', CLEAN];
+  const f = async (url, init) => { bodies.push(JSON.parse(init.body).options); return { ok: true, status: 200, json: async () => ({ response: answers[bodies.length - 1] }) }; };
   const r = await narrate(person, place, { engine: 'ollama', model: 'gemma3' }, f);
-  assert.equal(asked, 1); assert.equal(r.source, 'template');
+  assert.equal(r.source, 'gemma3 via Ollama'); assert.equal(r.text, CLEAN);
+  assert.deepEqual(bodies.map((o) => [o.temperature, o.repeat_penalty]), [[0.4, 1.1], [0.2, 1.15]]);
+
+  const all = await narrate(person, place, { engine: 'ollama', model: 'gemma3' }, async () => ({ ok: true, status: 200, json: async () => ({ response: 'Ada Sample lived near Mary in Raton for many years and kept bees there.' }) }));
+  assert.equal(all.source, 'template');
+  assert.match(all.reason, /"Mary".*3 tries/);
+  assert.equal(all.attempt, 'Ada Sample lived near Mary in Raton for many years and kept bees there.');
 });
 
 test('each retry samples more carefully than the one before', async () => {
