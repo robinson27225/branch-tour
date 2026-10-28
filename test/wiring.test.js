@@ -88,3 +88,14 @@ test('a place can be positioned by hand, and extra profiles can be named on the 
   assert.match(app, /e\.target\.id === 'posGps'/);
   assert.match(app, /setPlacePosition\(/);
 });
+
+test('Gemma pauses itself after the page closes on it, and stories can be written, saved and loaded', () => {
+  assert.match(app, /const PAUSED_KEY = /);
+  assert.match(app, /\$\('resumeGemma'\)\.addEventListener\('click'/);
+  assert.ok(html.includes('id="pausedNote"') && html.includes('id="resumeGemma"'));
+  assert.match(app, /^showPaused\(\);$/m);
+  assert.match(app, /e\.target\.id === 'writeAll'/);
+  assert.match(app, /e\.target\.id === 'saveStories'/);
+  assert.match(app, /e\.target\.id === 'loadStories'/);
+  assert.match(read('sw.js'), /src\/stories\.js/);
+});

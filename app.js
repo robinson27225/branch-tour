@@ -7,6 +7,7 @@ import { nearestPlaces, placesWithin, radiusMeters, defaultUnit, formatDistance,
 import { limitToNearby } from './src/nearby.js';
 import { SORTS, DEFAULT_SORT, sortPeople } from './src/sort.js';
 import { offlineReport, mark } from './src/offline.js';
+import { exportStories, importStories } from './src/stories.js';
 import { geocodeName } from './src/geocode.js';
 import { narrate, templateNarration, engineOf, ungroundedWord, DEFAULT_SETTINGS } from './src/narrate.js';
 import { BROWSER_MODELS, webGpuAvailable, isDownloaded, loadModel, isLoaded, generatorFor, removeModel, friendlyLoadError } from './src/webllm.js';
@@ -278,7 +279,12 @@ function renderPlace(pack, place) {
     <label>Latitude and longitude <input id="posInput" placeholder="45.120541, -122.590745" autocomplete="off"></label>
     <button type="button" id="posSet">Set it</button> <button type="button" id="posGps">Use my location</button>
     <p class="hint" id="posMsg" role="status">Paste the coordinates from a map app or from WikiTree's category page, or stand at the gate and use your location.</p></details>`;
-  $('tour').innerHTML = `<button id="back">← All places</button><h2>${esc(place.name)}</h2>${prep}${position}${sorter}
+  const offline = `<details class="panel"><summary>Stories for no signal</summary>
+    <button type="button" id="writeAll">Write every story now</button>
+    <button type="button" id="saveStories">Save stories to a file</button>
+    <label>Load stories from a file <input type="file" id="loadStories" accept=".json,application/json"></label>
+    <p class="hint" id="storiesMsg" role="status">Write them where Gemma works best (a laptop with Ollama), save the file, and load it on the phone. Each story is checked against the record again before it is used.</p></details>`;
+  $('tour').innerHTML = `<button id="back">← All places</button><h2>${esc(place.name)}</h2>${prep}${position}${offline}${sorter}
     <ul class="list">${people.map((p) => `<li data-person="${esc(p.id)}"><span>${esc(p.name)}<small>${esc(p.birth.date)} – ${esc(p.death.date)}${p.relationship ? ' · ' + esc(p.relationship) : p.relation && p.relation.kind === 'untraced' ? ' · relationship not traced' : ''}</small><small class="id">${wtLink(p.id)}</small></span></li>`).join('')}</ul>`;
 }
 
@@ -296,6 +302,8 @@ $('tour').addEventListener('click', async (e) => {
     return tell(pack, false);
   }
   if (e.target.id === 'again') { unlockAudio(); return tell(pack, true); }
+  if (e.target.id === 'writeAll') return writeAll(pack, currentPlace(pack));
+  if (e.target.id === 'saveStories') return saveStories(pack, currentPlace(pack));
   if (e.target.id === 'posSet') {
     const at = parseCoordinates($('posInput').value);
     if (!at) return ($('posMsg').textContent = 'Could not read that. Type two numbers, for example 45.120541, -122.590745.');
@@ -313,7 +321,16 @@ $('tour').addEventListener('click', async (e) => {
 });
 
 // The distance limit is kept with the other settings. A blank or non-positive number means no limit.
-$('tour').addEventListener('change', (e) => {
+$('tour').addEventListener('change', async (e) => {
+  if (e.target.id === 'loadStories') {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const { loaded, skipped } = await importStories(media, currentPack(), JSON.parse(await file.text()));
+      $('storiesMsg').textContent = `Loaded ${loaded} stories${skipped ? ` (${skipped} were for people not in this pack)` : ''}. Tap a name to hear one.`;
+    } catch (err) { $('storiesMsg').textContent = err.message; }
+    return;
+  }
   if (e.target.id === 'sortBy') { state.settings.sort = e.target.value; saveSettings(state.settings); return renderTour(); }
   if (e.target.id !== 'radius' && e.target.id !== 'radiusUnit') return;
   if (e.target.id === 'radius') { const n = Number(e.target.value); state.settings.radius = n > 0 ? String(n) : ''; }
@@ -321,6 +338,37 @@ $('tour').addEventListener('change', (e) => {
   saveSettings(state.settings);
   renderTour();
 });
+
+// Writes (or keeps) a story for everyone at this place, one after another, so they are ready with no signal.
+async function writeAll(pack, place) {
+  if (!place) return;
+  const people = place.personIds.map((id) => personById(pack, id));
+  $('writeAll').disabled = true;
+  try {
+    for (const [i, p] of people.entries()) {
+      $('storiesMsg').textContent = `Writing ${i + 1} of ${people.length}: ${p.name}`;
+      const out = await storyFor(pack, place, p);
+      // A plain story standing in for a model that could not run is not kept, so saying "done" would be untrue.
+      if (out.source === 'template' && state.settings.useModel) {
+        $('storiesMsg').textContent = `Stopped at ${p.name}: the model could not write (${out.reason || 'unknown reason'}). Nothing more was saved. Fix that on the Narrator tab, or choose "Nothing" for plain stories.`;
+        return;
+      }
+    }
+    $('storiesMsg').textContent = `Done: ${people.length} stories are saved on this device.`;
+  } catch (err) { $('storiesMsg').textContent = err.message; }
+  finally { $('writeAll').disabled = false; }
+}
+
+async function saveStories(pack, place) {
+  const data = await exportStories(media, pack, place.personIds.map((id) => personById(pack, id)));
+  const n = Object.keys(data.stories).length;
+  if (!n) return ($('storiesMsg').textContent = 'No stories are saved yet. Use "Write every story now" first.');
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: `stories-${place.name.split(',')[0].replace(/\W+/g, '-')}.json` });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  $('storiesMsg').textContent = `Saved ${n} stories to a file.`;
+}
 
 // A position typed in or taken from the phone replaces the map lookup's guess, and is saved with the pack.
 async function setPlacePosition(pack, place, at) {
@@ -332,24 +380,42 @@ async function setPlacePosition(pack, place, at) {
 
 const currentPlace = (pack) => pack.places.find((p) => p.key === state.placeKey);
 
-// Loading Gemma takes a lot of memory, and a phone with many tabs open may close the page to make room. The page then
-// comes back as if it had been reloaded, with no word about why. A note is left in localStorage while a load is under
-// way; finding it at the next start means the load never finished.
-const LOADING_KEY = 'branches-loading';
-const flag = (on) => { try { if (on) localStorage.setItem(LOADING_KEY, String(Date.now())); else localStorage.removeItem(LOADING_KEY); } catch { /* ignore */ } };
-try { state.loadCrashed = !!localStorage.getItem(LOADING_KEY); localStorage.removeItem(LOADING_KEY); } catch { state.loadCrashed = false; }
-async function guardedLoad(id, opts) {
-  flag(true);
-  try { return await loadModel(id, opts); } finally { flag(false); }
+// Loading Gemma, or having it write, takes a lot of memory, and a phone with many tabs open may close the page to make room.
+// The page then comes back as if it had been reloaded, with no word about why, and trying again can do the same. So a note
+// of the step under way is kept in localStorage; finding one at the next start means that step never finished. Gemma is
+// then paused (plain stories, and the voice, carry on) until the member turns it back on under Narrator.
+const STEP_KEY = 'branches-gemma-step';
+const PAUSED_KEY = 'branches-gemma-paused';
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
+  del: (k) => { try { localStorage.removeItem(k); } catch { /* ignore */ } },
+};
+const step = (what) => (what ? store.set(STEP_KEY, what) : store.del(STEP_KEY));
+{
+  const unfinished = store.get(STEP_KEY);
+  if (unfinished) { store.set(PAUSED_KEY, unfinished); store.del(STEP_KEY); }
 }
+// Closing the page or going to another one on purpose is not a crash.
+window.addEventListener('pagehide', () => step(''));
+const gemmaPausedAt = () => store.get(PAUSED_KEY);
+async function guardedLoad(id, opts) {
+  step('loading Gemma onto the graphics chip');
+  try { return await loadModel(id, { ...opts, onStep: (what) => step(what) }); } finally { step(''); }
+}
+function showPaused() {
+  const at = gemmaPausedAt();
+  $('pausedNote').hidden = $('resumeGemma').hidden = !at;
+  if (at) $('pausedNote').textContent = `Gemma is paused: the page closed while it was ${at}. That is usually the phone running out of memory. Stories use the plain version, with the voice, until you turn Gemma back on. Close other tabs and apps first.`;
+}
+$('resumeGemma').addEventListener('click', () => { store.del(PAUSED_KEY); showPaused(); $('dlMsg').textContent = 'Gemma is back on. Tap a name to try it.'; });
 
 // The in-browser Gemma, loaded from the device if it was downloaded. null for the other engines.
 async function browserGenerator() {
   state.browserReason = '';
   if (state.settings.engine !== 'browser') return null;
-  if (state.loadCrashed) {
-    state.loadCrashed = false;
-    state.browserReason = 'the page closed the last time Gemma was loading, usually because the phone ran out of memory. Close other tabs and apps, then press "tell it again" to try Gemma once more';
+  if (gemmaPausedAt()) {
+    state.browserReason = `Gemma is paused because the page closed while it was ${gemmaPausedAt()}, usually because the phone ran out of memory. Close other tabs and apps, then turn it back on under Narrator`;
     return null;
   }
   if (!webGpuAvailable()) { state.browserReason = 'this browser has no WebGPU, so Gemma cannot run in it'; return null; }
@@ -370,10 +436,15 @@ async function storyFor(pack, place, person, fresh = false) {
     if (kept && (kept.source === 'template' || !ungroundedWord(kept.text, person, place))) return kept;
   }
   const gen = await browserGenerator();
-  const out = await narrate(person, place, state.settings, fetch, gen, (n, tries) => {
-    const box = $('story');
-    if (box && state.personId === person.id) box.innerHTML = `<p class="hint">That answer did not pass the checks. Trying again (${n} of ${tries})…</p>`;
-  });
+  if (gen) step('writing a story');
+  let out;
+  try {
+    out = await narrate(person, place, state.settings, fetch, gen, (n, tries) => {
+      step(`writing a story (try ${n})`);
+      const box = $('story');
+      if (box && state.personId === person.id) box.innerHTML = `<p class="hint">That answer did not pass the checks. Trying again (${n} of ${tries})…</p>`;
+    });
+  } finally { if (gen) step(''); }
   if (!gen && state.settings.engine === 'browser' && state.browserReason) out.reason = state.browserReason;
   // A template that stands in for an unreachable model is not kept, so the model gets another chance.
   if (out.source !== 'template' || !state.settings.useModel) await media.putJson(key, out);
@@ -600,6 +671,7 @@ $('offlineCheck').addEventListener('click', async () => {
 // ---------- boot ----------
 bindSettings();
 refreshBrowserModel();
+showPaused();
 await refreshPacks();
 show('tour');
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

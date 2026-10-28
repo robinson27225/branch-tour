@@ -37,7 +37,7 @@ const remembered = (id) => { try { const v = localStorage.getItem(MEMORY + id); 
 const remember = (id, opts) => { try { localStorage.setItem(MEMORY + id, JSON.stringify(opts ?? null)); } catch { /* optional */ } };
 
 // Downloads the model if needed, then loads it onto the graphics chip. `onProgress({ progress, text })`.
-export async function loadModel(modelId, { onProgress = () => {}, lib } = {}) {
+export async function loadModel(modelId, { onProgress = () => {}, onStep = () => {}, lib } = {}) {
   if (loaded && loaded.id === modelId) return loaded.engine;
   const l = lib || await defaultLib();
   const initProgressCallback = (p) => onProgress(p);
@@ -52,9 +52,11 @@ export async function loadModel(modelId, { onProgress = () => {}, lib } = {}) {
   let last;
   for (const opts of attempts) {
     try {
+      onStep('loading Gemma onto the graphics chip');
       await engine.reload(modelId, opts);
       if (known === undefined) { // a setting not yet proven on this device: make sure the model writes sensibly with it
         onProgress({ progress: 1, text: 'Checking that Gemma writes sensibly on this device…' });
+        onStep('checking that Gemma writes sensibly');
         if (!(await selfTest(engine))) { last = new Error('GARBLED: the model loaded but wrote broken text with this setting'); continue; }
       }
       remember(modelId, opts);
