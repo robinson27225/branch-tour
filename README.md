@@ -4,6 +4,10 @@ Walk a cemetery with your family tree in your pocket. Before you leave home you 
 
 Made for the DEV Hacktoberfest Open-Source AI Challenge, Week 4 ("Ghost in the Machine").
 
+- **Write-up:** [Tour of the Branches: a small open model that tells you who is buried around you, with no signal](https://dev.to/robinson27225/tour-of-the-branches-a-small-open-model-that-tells-you-who-is-buried-around-you-with-no-signal-17kc)
+- **Video:** [Tour of the Branches at Molalla Memorial Cemetery](https://www.youtube.com/watch?v=Ymun_k_yljU)
+- **Try it:** [apps.wikitree.com/apps/robinson27225/branch-tour](https://apps.wikitree.com/apps/robinson27225/branch-tour/index.html) (the sample pack works without a WikiTree login)
+
 Plain JavaScript modules, no build step, no dependencies to install.
 
 ## Run
