@@ -99,3 +99,12 @@ test('Gemma pauses itself after the page closes on it, and stories can be writte
   assert.match(app, /e\.target\.id === 'loadStories'/);
   assert.match(read('sw.js'), /src\/stories\.js/);
 });
+
+test('the footer links the help page before the version and says who created the app', async () => {
+  const { HELP_URL, OWNER_ID } = await import('../src/version.js');
+  assert.equal(HELP_URL, 'https://www.wikitree.com/wiki/Space:Tour_of_the_Branches');
+  assert.ok(html.includes(`id="help" href="${HELP_URL}"`));
+  assert.match(html, /id="help"[^>]*>Help<\/a> · <span id="ver"><\/span><br>created by <a id="owner"/);
+  assert.match(app, /\$\('help'\)\.href = HELP_URL/);
+  assert.equal(OWNER_ID, 'Robinson-27225');
+});

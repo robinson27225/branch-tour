@@ -13,7 +13,7 @@ import { narrate, templateNarration, engineOf, ungroundedWord, DEFAULT_SETTINGS 
 import { BROWSER_MODELS, webGpuAvailable, isDownloaded, loadModel, isLoaded, generatorFor, removeModel, friendlyLoadError } from './src/webllm.js';
 import { checkOllama, describeOllama, pullCommand, serveCommand } from './src/ollama.js';
 import { buildTourPack, makeApi, parseProfileIds } from './src/builder.js';
-import { VERSION, OWNER_ID } from './src/version.js';
+import { VERSION, OWNER_ID, HELP_URL } from './src/version.js';
 import { MediaStore, getClip, hasClip, storyKey, VOICE_DEFAULTS, VOICE_SUGGESTIONS } from './src/voice.js';
 import { savePack, listPacks, deletePack, loadSettings, saveSettings } from './src/store.js';
 
@@ -228,6 +228,7 @@ window.addEventListener('load', syncMode);
 
 // ---------- footer ----------
 $('ver').textContent = 'v' + VERSION;
+$('help').href = HELP_URL;
 $('owner').textContent = OWNER_ID;
 $('owner').href = 'https://www.wikitree.com/wiki/' + OWNER_ID;
 

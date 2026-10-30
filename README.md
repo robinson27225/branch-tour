@@ -55,7 +55,7 @@ A pack holds the names, dates, places and relatives of a family, and the app kno
 
 ## Icons and logo
 
-`brand/` holds the app icon and logo as SVG and PNG, and a set of line icons (headstone, cemetery map, photo tag, no signal, story, relationship, near me, stories file, sort, offline ready) in `brand/icons/`. `brand/icon-sheet.png` shows them all. They are drawn for this project and covered by the MIT license; they do not use the WikiTree logo.
+`brand/` holds the app icon and logo as SVG and PNG, and a set of line icons (headstone, cemetery map, photo tag, no signal, story, relationship, near me, stories file, sort, offline ready) in `brand/icons/`. `brand/icon-sheet.png` shows them all. They are drawn for this project and covered by the MIT license. `brand/wikitree-style/` has a gold-disc version in the style of WikiTree apps; it uses the WikiTree tree artwork unchanged (`source-wikitree-tree-glyph.png`), which belongs to WikiTree and is not covered by this license. The rest does not use the WikiTree logo.
 
 ## Licenses
 
