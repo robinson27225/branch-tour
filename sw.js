@@ -1,8 +1,8 @@
 // Keeps the app working with no signal in a cemetery, without ever hiding an update.
-const CACHE = 'branches-0.9.27'; // the saved stories and clips live in 'ghost-tour-media', kept across updates
+const CACHE = 'branches-0.9.28'; // the saved stories and clips live in 'ghost-tour-media', kept across updates
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest',
   'src/pack.js', 'src/kinship.js', 'src/quality.js', 'src/report.js', 'src/connections.js', 'src/xlsx.js', 'src/geo.js', 'src/geocode.js', 'src/nearby.js', 'src/sort.js', 'src/offline.js', 'src/stories.js', 'src/narrate.js', 'src/store.js', 'src/builder.js', 'src/voice.js', 'src/webllm.js', 'src/ollama.js', 'src/version.js', 'sample-pack.json',
-  'img/wt-brand.png', 'fonts/roboto-mono-latin-400-normal.woff2', 'fonts/roboto-mono-latin-700-normal.woff2'];
+  'img/wt-brand.png', 'img/icon-192.png', 'img/icon-512.png', 'img/icon-maskable-512.png', 'img/apple-touch-icon.png', 'img/favicon-32.png', 'img/favicon-16.png', 'img/favicon.svg', 'fonts/roboto-mono-latin-400-normal.woff2', 'fonts/roboto-mono-latin-700-normal.woff2'];
 
 // Fonts, the logo and the 6.8 MB Gemma library never change: use the saved copy first.
 // Pages and code ask the server first, so a new version shows on the next load; the saved copy is for when there is no signal.

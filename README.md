@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo-horizontal-on-dark.png">
+    <img src="brand/logo-horizontal-on-light.png" alt="Tour of the Branches" width="520">
+  </picture>
+</p>
+
 # Tour of the Branches
 
 Walk a cemetery with your family tree in your pocket. Before you leave home you build a *tour pack* from [WikiTree](https://www.wikitree.com); at the cemetery GPS picks the nearest place, you tap a name, and a small open model, **Gemma**, tells that person's story using only what their WikiTree profile says. It also says how they are related to you, links back to their profile, and can read the story aloud. Everything the tour needs is on the phone, so it works with no signal.
@@ -45,6 +52,10 @@ A pack holds the names, dates, places and relatives of a family, and the app kno
 - The storage names `ghost-tour` and `ghost-tour-media` come from the app's first name and are kept on purpose, so packs and saved stories survive updates.
 - Gemma 3 1B is small and plain, and on some phones it is more than the browser will give it. Faithfulness to the record, not fluency, is the hard part, which is why the checks exist. Gemma through Ollama on a laptop writes cleaner stories; the stories file carries them to the phone.
 - Nominatim often lacks small cemeteries. Those fall back to the town and are marked "approximate spot", unless the cemetery's category page gives its position.
+
+## Icons and logo
+
+`brand/` holds the app icon and logo as SVG and PNG, and a set of line icons (headstone, cemetery map, photo tag, no signal, story, relationship, near me, stories file, sort, offline ready) in `brand/icons/`. `brand/icon-sheet.png` shows them all. They are drawn for this project and covered by the MIT license; they do not use the WikiTree logo.
 
 ## Licenses
 
