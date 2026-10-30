@@ -51,6 +51,7 @@ code{background:var(--card);padding:1px 4px;border-radius:4px}
 .colophon .brand span{display:block;height:32px;aspect-ratio:534/85;max-width:60vw;background:url(img/wt-brand.png) no-repeat left center/contain}
 .colophon .meta{font-size:.75rem;line-height:1.35;text-align:right;white-space:nowrap}
 .colophon a{color:var(--bg);font-weight:700}
+.colophon .by{font-size:.62rem}
 
 /* progress banner: stays in view while a long build runs */
 .progress #statusText{white-space:pre-line}

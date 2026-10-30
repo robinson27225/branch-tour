@@ -104,7 +104,8 @@ test('the footer links the help page before the version and says who created the
   const { HELP_URL, OWNER_ID } = await import('../src/version.js');
   assert.equal(HELP_URL, 'https://www.wikitree.com/wiki/Space:Tour_of_the_Branches');
   assert.ok(html.includes(`id="help" href="${HELP_URL}"`));
-  assert.match(html, /id="help"[^>]*>Help<\/a> · <span id="ver"><\/span><br>created by <a id="owner"/);
+  assert.match(html, /id="help"[^>]*>Help<\/a> · <span id="ver"><\/span><br><span class="by">created by <a id="owner"/);
+  assert.match(read('styles.css'), /\.colophon \.by\{font-size:\.62rem\}/);
   assert.match(app, /\$\('help'\)\.href = HELP_URL/);
   assert.equal(OWNER_ID, 'Robinson-27225');
 });
