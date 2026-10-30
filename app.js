@@ -132,7 +132,7 @@ async function finish(pack, note = '', near = null) {
   state.packName = pack.name;
   const s = pack.stats;
   const unplaced = pack.places.filter((p) => p.lat === null).length;
-  status(`Ready: ${s.people} people at ${pack.places.length} places${s.withBio !== undefined ? `, ${s.withBio} with biographies` : ''}${unplaced ? ` (${unplaced} not found on the map)` : ''}. Left out ${s.excludedLiving} who may be living${s.hidden ? ` and ${s.hidden} private or hidden profiles` : ''}.${note}`, { done: true });
+  status(`Ready: ${s.people} ${s.people === 1 ? 'person' : 'people'} at ${pack.places.length} ${pack.places.length === 1 ? 'place' : 'places'}${s.withBio !== undefined ? `, ${s.withBio} with biographies` : ''}${unplaced ? ` (${unplaced} not found on the map)` : ''}. Left out ${s.excludedLiving} who may be living${s.hidden ? ` and ${s.hidden} private or hidden profiles` : ''}.${note}`, { done: true });
 }
 
 // ---------- build from WikiTree ----------
